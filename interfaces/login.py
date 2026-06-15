@@ -274,13 +274,3 @@ def flujo_login():
     console.print()
 
 
-def main():
-    try:
-        flujo_login()
-    except KeyboardInterrupt:
-        console.print(f"\n\n  [dim {GRIS_SUB}]Sesión cancelada. ¡Hasta pronto! ⚽[/]\n")
-        sys.exit(0)
-
-
-if __name__ == "__main__":
-    main()
