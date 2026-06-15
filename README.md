@@ -11,3 +11,6 @@ integrantes:
 El sistema deberá permitir administrar entradas para eventos musicales. La solución podrá contemplar selección de sectores, cálculo de importes, control de capacidad y aplicación de promociones o descuentos.
 
 También podrá incorporar estadísticas de ventas y sectores más demandados.
+
+------
+w
