@@ -4,7 +4,7 @@
 
 integrantes:
 - Thiago Jeremías obregon
-  
+- Thiago Holzman Zorzon   
 *agreguen todos sus nombres completos*
 
 ## definicion:
