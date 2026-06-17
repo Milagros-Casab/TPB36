@@ -13,14 +13,6 @@ def process_password(password):
 
 #
 
-def create_user(email, password):
-
-	hash_password = process_password(password)
-
-	conn.execute(f'INSERT INTO ACCOUNTS (EMAIL, PASSWORD) VALUES("{email}", "{hash_password}");')
-	conn.commit();
-#
-
 
 def read_user(email):
 
@@ -34,16 +26,33 @@ def read_user(email):
 #
 
 
+def create_user(email, password):
+
+	hash_password = process_password(password)
+
+	if read_user(email)==False :
+		try:
+			conn.execute(f'INSERT INTO ACCOUNTS (EMAIL, PASSWORD) VALUES("{email}", "{hash_password}");')
+			conn.commit();
+			return True
+
+		except sqlite3.Error as e:
+			return False
+
+		return False
+	return False
+#
+
+
+
 def check_login(email, password):
 
 	hash_password = process_password(password)
-	data = db.execute(f'SELECT PASSWORD FROM ACCOUNTS WHERE EMAIL="{email}"').fetchone()
 
-	if data is None:
-		return False
+	if read_user(email)!=False :
 
-	if(data["PASSWORD"] == hash_password):
-		return True
+		if(read_user(email)[1] == hash_password):
+			return True
+
 	return False
-
 #
