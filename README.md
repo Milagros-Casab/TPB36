@@ -5,6 +5,7 @@
 integrantes:
 - Thiago Jeremías obregon
 - Thiago Holzman Zorzon   
+- Máximo Amir Ramirez
 *agreguen todos sus nombres completos*
 
 ## definicion:
@@ -13,4 +14,3 @@ El sistema deberá permitir administrar entradas para eventos musicales. La solu
 También podrá incorporar estadísticas de ventas y sectores más demandados.
 
 ------
-w
