@@ -172,7 +172,7 @@ def purge_event(name):
 
 
 
-def list_events(part):
+def list_event(part):
 
 	data = db.execute(f'SELECT * FROM EVENTS;').fetchmany( 10 + (part-1 * 10) )
 
