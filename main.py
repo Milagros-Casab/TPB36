@@ -4,15 +4,14 @@ from interfaces.login import *
 from models.database import *
 
 
-# instalar rich con "pip install rich"
-# en linux (probablemente) exija un argumento mas ""pip install rich --break-system-packages
+# instalar rich con "pip install -r requierements.txt"
 import rich
 
 
 if __name__ == '__main__':
 
 
-
+    # pueden comentar esta parte para probar cosas y asi.
     try:
         flujo_login()
     except KeyboardInterrupt:
@@ -20,5 +19,3 @@ if __name__ == '__main__':
         sys.exit(0)
     print("test")
 #
-
-## un cambio
