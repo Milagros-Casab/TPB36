@@ -10,14 +10,15 @@
 
 from datetime import datetime
 
+# day-month-year hour:minute
 time_format = "%d-%m-%Y %H:%M"
 
 
 
 # Turns a date and hour into UNIX timestamp
-def to_unix(date, hour):
+def to_unix(date):
 
-	return int( datetime.strptime(date + " " + hour, time_format).timestamp() )
+	return int( datetime.strptime(date, time_format).timestamp() )
 #
 
 

@@ -2,13 +2,15 @@ import sqlite3
 from interfaces.login import *
 
 from models.database import *
+from models.date import *
 
 
 # instalar rich con "pip install -r requierements.txt"
-import rich
+
 
 
 if __name__ == '__main__':
+
 
 
     # pueden comentar esta parte para probar cosas y asi.
