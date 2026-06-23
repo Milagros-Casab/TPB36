@@ -174,7 +174,7 @@ def purge_event(name):
 
 def list_event(part):
 
-	data = db.execute(f'SELECT * FROM EVENTS;').fetchmany( 10 + (part-1 * 10) )
+	data = db.execute('SELECT * FROM EVENTS;').fetchall()
 
 
 	class ret:
@@ -194,3 +194,43 @@ def list_event(part):
 		ret.platea_stock.append(row["PLATEA_STOCK"])
 
 	return ret
+
+
+
+#
+#
+#
+
+
+
+def create_ticket(event, user, price, date, platea):
+
+	selected_event = db.execute(f'SELECT * FROM EVENTS WHERE NAME="{event}";').fetchone()
+	stock = 0
+
+
+	if(platea == 1): stock = db.execute(f'SELECT PLATEA_STOCK FROM EVENTS WHERE NAME="{event}";').fetchone()["PLATEA_STOCK"]
+	else: stock = db.execute(f'SELECT CAMPO_STOCK FROM EVENTS WHERE NAME="{event}";').fetchone()["CAMPO_STOCK"]
+
+
+	if stock == None:
+		return False
+
+	if stock>0 :
+		try:
+			conn.execute(f'INSERT INTO TICKETS VALUES("{event}", "{user}", {price}, "{date}", {platea});')
+			conn.commit()
+
+		except sqlite3.Error:
+			return False
+
+		else:
+			if(platea == 1):
+				conn.execute(f'UPDATE EVENTS SET PLATEA_STOCK=(PLATEA_STOCK-1) WHERE NAME="{event}";')
+				conn.commit()
+			else:
+				conn.execute(f'UPDATE EVENTS SET CAMPO_STOCK=(CAMPO_STOCK-1) WHERE NAME="{event}";')
+				conn.commit()
+
+		return True
+
