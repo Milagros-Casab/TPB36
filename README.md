@@ -6,6 +6,7 @@ integrantes:
 - Thiago Jeremías obregon
 - Thiago Holzman Zorzon   
 - Máximo Amir Ramirez
+- Vallejos Sanchez Gabriel Omar
 *agreguen todos sus nombres completos*
 
 ## definicion:
