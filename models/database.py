@@ -7,8 +7,12 @@
 #                                                 #
 #=================================================#
 
+
 import sqlite3
 import hashlib
+
+
+from models.date import *
 
 database_file = "data.db"
 
@@ -123,6 +127,7 @@ def read_event(ev_name):
 			campo_stock=0
 			campo_price=0
 			campo_stock=0
+			date=0
 
 		return ret
 
@@ -133,17 +138,18 @@ def read_event(ev_name):
 		campo_stock=data["CAMPO_STOCK"]
 		platea_price=data["PLATEA_PRICE"]
 		platea_stock=data["PLATEA_STOCK"]
+		date=data["DATE"]
 
 	return ret
+#
 
 
 
-
-def create_event(name, place, campo_price, campo_stock, platea_price, platea_stock):
+def create_event(name, place, campo_price, campo_stock, platea_price, platea_stock, date, hour):
 
 	if read_event(name).name==False:
 		try:
-			conn.execute(f'INSERT INTO EVENTS VALUES("{name}", "{place}", {campo_price}, {campo_stock}, {platea_price}, {platea_stock});')
+			conn.execute(f'INSERT INTO EVENTS VALUES("{name}", "{place}", {campo_price}, {campo_stock}, {platea_price}, {platea_stock}, {to_unix(date, hour)});')
 			conn.commit();
 
 		except sqlite3.Error:
@@ -152,6 +158,8 @@ def create_event(name, place, campo_price, campo_stock, platea_price, platea_sto
 		return True			# True if correctly executed
 
 	return False			# False if event already exists
+#
+
 
 
 def purge_event(name):
@@ -169,6 +177,7 @@ def purge_event(name):
 		return True
 
 	return False
+#
 
 
 
@@ -184,6 +193,8 @@ def list_event(part):
 		campo_stock =  []
 		platea_price = []
 		platea_stock = []
+		date =         []
+
 
 	for row in data:
 		ret.name.append(row["NAME"])
@@ -192,14 +203,16 @@ def list_event(part):
 		ret.campo_stock.append(row["CAMPO_STOCK"])
 		ret.platea_price.append(row["PLATEA_PRICE"])
 		ret.platea_stock.append(row["PLATEA_STOCK"])
+		ret.date.append(row["DATE"])
 
 	return ret
+#
 
 
 
-#
-#
-#
+# =========================================
+#    Manejo de tickets
+# =========================================
 
 
 
@@ -212,9 +225,8 @@ def create_ticket(event, user, price, date, platea):
 	if(platea == 1): stock = db.execute(f'SELECT PLATEA_STOCK FROM EVENTS WHERE NAME="{event}";').fetchone()["PLATEA_STOCK"]
 	else: stock = db.execute(f'SELECT CAMPO_STOCK FROM EVENTS WHERE NAME="{event}";').fetchone()["CAMPO_STOCK"]
 
+	if stock == None: return False
 
-	if stock == None:
-		return False
 
 	if stock>0 :
 		try:
@@ -234,3 +246,5 @@ def create_ticket(event, user, price, date, platea):
 
 		return True
 
+	return False
+#
