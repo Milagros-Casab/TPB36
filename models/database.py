@@ -145,11 +145,11 @@ def read_event(ev_name):
 
 
 
-def create_event(name, place, campo_price, campo_stock, platea_price, platea_stock, date, hour):
+def create_event(name, place, campo_price, campo_stock, platea_price, platea_stock, date):
 
 	if read_event(name).name==False:
 		try:
-			conn.execute(f'INSERT INTO EVENTS VALUES("{name}", "{place}", {campo_price}, {campo_stock}, {platea_price}, {platea_stock}, {to_unix(date, hour)});')
+			conn.execute(f'INSERT INTO EVENTS VALUES("{name}", "{place}", {campo_price}, {campo_stock}, {platea_price}, {platea_stock}, {to_unix(date)});')
 			conn.commit();
 
 		except sqlite3.Error:
@@ -243,8 +243,7 @@ def create_ticket(event, user, price, date, platea):
 			else:
 				conn.execute(f'UPDATE EVENTS SET CAMPO_STOCK=(CAMPO_STOCK-1) WHERE NAME="{event}";')
 				conn.commit()
-
-		return True
+			return True
 
 	return False
 #
