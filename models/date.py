@@ -6,11 +6,10 @@
 
 from datetime import datetime
 
-FORMATO = "%d/%m/%Y"
-
+FORMATO = "%d/%m/%Y %H:%M"
 
 def to_unix(fecha_str):
-	"""Convierte 'dd/mm/yyyy' a timestamp unix (int)."""
+	"""Convierte 'dd/mm/yyyy HH:MM' a timestamp unix (int)."""
 	try:
 		dt = datetime.strptime(fecha_str, FORMATO)
 		return int(dt.timestamp())
@@ -19,7 +18,7 @@ def to_unix(fecha_str):
 
 
 def from_unix(timestamp):
-	"""Convierte timestamp unix (int) a 'dd/mm/yyyy'."""
+	"""Convierte timestamp unix (int) a 'dd/mm/yyyy HH:MM'."""
 	try:
 		return datetime.fromtimestamp(int(timestamp)).strftime(FORMATO)
 	except (ValueError, TypeError, OSError):
