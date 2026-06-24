@@ -18,7 +18,6 @@ from rich.rule import Rule
 from rich import box
 from rich.live import Live
 from rich.spinner import Spinner
-from rich.columns import Columns
 
 import models.database as database
 from models.date import from_unix
@@ -33,13 +32,12 @@ VERDE    = "#3CB371"
 ROJO_ERR = "#E05050"
 GRIS_SUB = "#888888"
 
-# ─── Ruta de la base de datos (la misma que usa database.py) ──────────────
 DB_PATH = Path(__file__).resolve().parent / database.database_file
 
 print(f"\n  [BASE DE DATOS] {DB_PATH}")
 print()
 
-usuario_activo = ""        # ahora es el EMAIL del usuario logueado
+usuario_activo = ""        
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -60,7 +58,9 @@ def inicializar_db() -> None:
             CAMPO_STOCK  INTEGER NOT NULL,
             PLATEA_PRICE INTEGER NOT NULL,
             PLATEA_STOCK INTEGER NOT NULL,
-            DATE         INTEGER NOT NULL
+            DATE         INTEGER NOT NULL,
+            DISCOUNT_CODE TEXT DEFAULT '',
+            DISCOUNT_PCT  INTEGER DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS TICKETS (
@@ -71,13 +71,20 @@ def inicializar_db() -> None:
             PLATEA INTEGER NOT NULL
         );
     """)
+    
+    # Migración segura por si el archivo data.db ya existía sin estas columnas
+    try:
+        database.conn.execute("ALTER TABLE EVENTS ADD COLUMN DISCOUNT_CODE TEXT DEFAULT '';")
+        database.conn.execute("ALTER TABLE EVENTS ADD COLUMN DISCOUNT_PCT INTEGER DEFAULT 0;")
+    except sqlite3.OperationalError:
+        pass  # Las columnas ya existen
+        
     database.conn.commit()
 
-    # Evento de ejemplo, solo si no hay ninguno
     if database.read_event("Rock Fest 2025").name is False:
         database.create_event(
             "Rock Fest 2025", "Estadio Monumental",
-            15000, 500, 25000, 300, "15/08/2025"
+            15000, 500, 25000, 300, "15/08/2025", "MESSI10", 10
         )
 
 
@@ -87,7 +94,6 @@ def inicializar_db() -> None:
 
 def limpiar():
     console.clear()
-
 
 def banner():
     titulo = Text()
@@ -102,39 +108,29 @@ def banner():
     )
     console.print(panel)
 
-
 def separador(texto: str = ""):
     if texto:
         console.print(Rule(texto, style=CELESTE))
     else:
         console.print(Rule(style=f"dim {GRIS_SUB}"))
 
-
 def msg_error(msg: str):
-    console.print(Panel(f"[bold {ROJO_ERR}]  {msg}[/]",
-                        border_style=ROJO_ERR, box=box.ROUNDED, padding=(0, 2)))
-
+    console.print(Panel(f"[bold {ROJO_ERR}]  {msg}[/]", border_style=ROJO_ERR, box=box.ROUNDED, padding=(0, 2)))
 
 def msg_exito(msg: str):
-    console.print(Panel(f"[bold {VERDE}]  {msg}[/]",
-                        border_style=VERDE, box=box.ROUNDED, padding=(0, 2)))
-
+    console.print(Panel(f"[bold {VERDE}]  {msg}[/]", border_style=VERDE, box=box.ROUNDED, padding=(0, 2)))
 
 def msg_info(msg: str):
-    console.print(Panel(f"[bold {CELESTE}]  {msg}[/]",
-                        border_style=CELESTE, box=box.ROUNDED, padding=(0, 2)))
-
+    console.print(Panel(f"[bold {CELESTE}]  {msg}[/]", border_style=CELESTE, box=box.ROUNDED, padding=(0, 2)))
 
 def spinner_carga(msg: str = "Procesando", secs: float = 1.5):
     sp = Spinner("dots", text=f"[{CELESTE}]{msg}...[/]", style=CELESTE)
     with Live(Align.center(sp), refresh_per_second=20, console=console):
         time.sleep(secs)
 
-
 def pausar():
     console.print(f"\n  [dim {GRIS_SUB}]Presiona[/] [bold]Enter[/] [dim {GRIS_SUB}]para continuar.[/]")
     input()
-
 
 def pedir_texto(prompt: str, minlen: int = 1) -> str:
     while True:
@@ -145,7 +141,6 @@ def pedir_texto(prompt: str, minlen: int = 1) -> str:
         if len(val) >= minlen:
             return val
         msg_error(f"El campo no puede estar vacio (min {minlen} caracter/es).")
-
 
 def pedir_entero(prompt: str, minval: int = 1) -> int:
     while True:
@@ -164,8 +159,7 @@ def pedir_entero(prompt: str, minval: int = 1) -> int:
 
 def pantalla_inicio() -> str:
     while True:
-        limpiar()
-        banner()
+        limpiar(); banner()
         separador(" BIENVENIDO ")
         console.print()
 
@@ -179,21 +173,16 @@ def pantalla_inicio() -> str:
         separador()
 
         try:
-            opcion = Prompt.ask(
-                f"\n  [{CELESTE}]Tu eleccion[/]",
-                console=console, default="", show_default=False
-            ).strip()
+            opcion = Prompt.ask(f"\n  [{CELESTE}]Tu eleccion[/]", console=console, default="", show_default=False).strip()
         except (KeyboardInterrupt, EOFError):
             opcion = "0"
 
         if opcion == "1":
             usuario = flujo_login()
-            if usuario:
-                return usuario
+            if usuario: return usuario
         elif opcion == "2":
             usuario = flujo_registro()
-            if usuario:
-                return usuario
+            if usuario: return usuario
         elif opcion == "0":
             limpiar(); banner()
             console.print(f"\n  [bold {DORADO}]Hasta la proxima!  [/]\n")
@@ -205,7 +194,7 @@ def pantalla_inicio() -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-#  REGISTRO  -> database.create_user()
+#  REGISTRO 
 # ═══════════════════════════════════════════════════════════════════════════
 
 def flujo_registro() -> str:
@@ -218,18 +207,13 @@ def flujo_registro() -> str:
         if not email or "@" not in email:
             msg_error("Email invalido."); pausar(); return ""
 
-        contrasena = Prompt.ask(
-            f"  [{CELESTE}]  Contrasena[/]", console=console, password=True
-        )
+        contrasena = Prompt.ask(f"  [{CELESTE}]  Contrasena[/]", console=console, password=True)
         if not contrasena or len(contrasena) < 4:
             msg_error("La contrasena debe tener al menos 4 caracteres."); pausar(); return ""
 
-        contrasena2 = Prompt.ask(
-            f"  [{CELESTE}]  Repeti la contrasena[/]", console=console, password=True
-        )
+        contrasena2 = Prompt.ask(f"  [{CELESTE}]  Repeti la contrasena[/]", console=console, password=True)
         if contrasena != contrasena2:
             msg_error("Las contrasenas no coinciden."); pausar(); return ""
-
     except (KeyboardInterrupt, EOFError):
         return ""
 
@@ -245,7 +229,7 @@ def flujo_registro() -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-#  LOGIN  -> database.login_user()
+#  LOGIN 
 # ═══════════════════════════════════════════════════════════════════════════
 
 def flujo_login() -> str:
@@ -261,9 +245,7 @@ def flujo_login() -> str:
             email = pedir_texto("  Email", minlen=1)
             if not email: return ""
 
-            contrasena = Prompt.ask(
-                f"  [{CELESTE}]  Contrasena[/]", console=console, password=True
-            )
+            contrasena = Prompt.ask(f"  [{CELESTE}]  Contrasena[/]", console=console, password=True)
             if not contrasena:
                 msg_error("La contrasena no puede estar vacia.")
                 time.sleep(1); continue
@@ -289,7 +271,7 @@ def flujo_login() -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-#  MODULO: VER EVENTOS  -> database.list_event()
+#  MODULO: VER EVENTOS 
 # ═══════════════════════════════════════════════════════════════════════════
 
 def mostrar_eventos(pausa: bool = True) -> None:
@@ -304,10 +286,7 @@ def mostrar_eventos(pausa: bool = True) -> None:
         if pausa: pausar()
         return
 
-    tabla = Table(
-        box=box.SIMPLE_HEAVY, border_style=CELESTE,
-        header_style=f"bold {DORADO}", padding=(0, 1),
-    )
+    tabla = Table(box=box.SIMPLE_HEAVY, border_style=CELESTE, header_style=f"bold {DORADO}", padding=(0, 1))
     tabla.add_column("#",       style=f"bold {DORADO}", justify="center", width=4)
     tabla.add_column("Evento",  style=f"bold {BLANCO}", justify="left",   width=22)
     tabla.add_column("Lugar",   style=f"dim {GRIS_SUB}", justify="left",  width=20)
@@ -316,19 +295,15 @@ def mostrar_eventos(pausa: bool = True) -> None:
 
     for i, nombre in enumerate(eventos.name, 1):
         libres = eventos.campo_stock[i - 1] + eventos.platea_stock[i - 1]
-        estado = (f"[{VERDE}]OK {libres} entradas[/]" if libres > 0
-                  else f"[{ROJO_ERR}]AGOTADO[/]")
-        tabla.add_row(
-            str(i), nombre, eventos.place[i - 1],
-            from_unix(eventos.date[i - 1]), estado
-        )
+        estado = f"[{VERDE}]OK {libres} entradas[/]" if libres > 0 else f"[{ROJO_ERR}]AGOTADO[/]"
+        tabla.add_row(str(i), nombre, eventos.place[i - 1], from_unix(eventos.date[i - 1]), estado)
 
     console.print(tabla)
     if pausa: pausar()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-#  MODULO: AGREGAR EVENTO  -> database.create_event()
+#  MODULO: AGREGAR EVENTO 
 # ═══════════════════════════════════════════════════════════════════════════
 
 def agregar_evento() -> None:
@@ -341,7 +316,7 @@ def agregar_evento() -> None:
         if not nombre: return
         lugar  = pedir_texto("  Lugar / Estadio", minlen=2)
         if not lugar: return
-        fecha  = pedir_texto("  Fecha (dd/mm/yyyy HH:MM)", minlen=15)
+        fecha  = pedir_texto("  Fecha (dd/mm/yyyy)", minlen=8)
         if not fecha: return
 
         separador(" SECTOR CAMPO ")
@@ -351,6 +326,13 @@ def agregar_evento() -> None:
         separador(" SECTOR PLATEA ")
         platea_price = pedir_entero("  Precio Platea ($)", minval=1)
         platea_stock = pedir_entero("  Capacidad Platea", minval=1)
+
+        separador(" CONFIGURACIÓN DE DESCUENTO ")
+        disc_code = Prompt.ask(f"  [{CELESTE}]Código de descuento (Enter para omitir)[/]", console=console, default="").strip().upper()
+        disc_pct = 0
+        if disc_code:
+            disc_pct = pedir_entero("  Porcentaje de beneficio (1-100%)", minval=1)
+            if disc_pct > 100: disc_pct = 100
 
     except (KeyboardInterrupt, EOFError):
         return
@@ -365,6 +347,7 @@ def agregar_evento() -> None:
     t.add_row("Fecha",  fecha)
     t.add_row("Campo",  f"${campo_price:,}  x {campo_stock}")
     t.add_row("Platea", f"${platea_price:,}  x {platea_stock}")
+    t.add_row("Cupón",  f"{disc_code} (-{disc_pct}%)" if disc_code else "Ninguno")
     console.print(t)
     separador()
 
@@ -374,13 +357,11 @@ def agregar_evento() -> None:
         ok = False
 
     if not ok:
-        msg_info("Operacion cancelada.")
-        pausar(); return
+        msg_info("Operacion cancelada."); pausar(); return
 
     spinner_carga("Guardando en la base de datos", 1.2)
 
-    if database.create_event(nombre, lugar, campo_price, campo_stock,
-                              platea_price, platea_stock, fecha):
+    if database.create_event(nombre, lugar, campo_price, campo_stock, platea_price, platea_stock, fecha, disc_code, disc_pct):
         msg_exito(f"Evento '{nombre}' guardado.")
     else:
         msg_error(f"Ya existe un evento llamado '{nombre}'.")
@@ -389,7 +370,7 @@ def agregar_evento() -> None:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-#  MODULO: COMPRA  -> database.read_event() / database.create_ticket()
+#  MODULO: COMPRA
 # ═══════════════════════════════════════════════════════════════════════════
 
 def seleccionar_evento() -> str:
@@ -398,10 +379,7 @@ def seleccionar_evento() -> str:
     separador()
     while True:
         try:
-            num = IntPrompt.ask(
-                f"\n  [{CELESTE}]Numero del evento[/] [dim](0 para cancelar)[/]",
-                console=console
-            )
+            num = IntPrompt.ask(f"\n  [{CELESTE}]Numero del evento[/] [dim](0 para cancelar)[/]", console=console)
         except (KeyboardInterrupt, EOFError):
             return ""
         if num == 0: return ""
@@ -409,14 +387,11 @@ def seleccionar_evento() -> str:
             return eventos.name[num - 1]
         msg_error("Evento no encontrado.")
 
-
 def seleccionar_sector(ev) -> int:
-    """Devuelve 1 si elige Platea, 0 si elige Campo, -1 si cancela."""
     separador(f" {ev.name} - Sectores ")
     console.print()
 
-    tabla = Table(box=box.SIMPLE_HEAVY, border_style=CELESTE,
-                  header_style=f"bold {DORADO}", padding=(0, 1))
+    tabla = Table(box=box.SIMPLE_HEAVY, border_style=CELESTE, header_style=f"bold {DORADO}", padding=(0, 1))
     tabla.add_column("#",           justify="center", width=4,  style=f"bold {DORADO}")
     tabla.add_column("Sector",      justify="left",   width=14, style=BLANCO)
     tabla.add_column("Precio",      justify="right",  width=12, style=VERDE)
@@ -432,23 +407,17 @@ def seleccionar_sector(ev) -> int:
 
     while True:
         try:
-            op = IntPrompt.ask(
-                f"\n  [{CELESTE}]Numero del sector[/] [dim](0 para cancelar)[/]",
-                console=console
-            )
+            op = IntPrompt.ask(f"\n  [{CELESTE}]Numero del sector[/] [dim](0 para cancelar)[/]", console=console)
         except (KeyboardInterrupt, EOFError):
             return -1
         if op == 0: return -1
         if op == 1:
-            if ev.campo_stock <= 0:
-                msg_error("El sector 'Campo' esta agotado."); continue
+            if ev.campo_stock <= 0: msg_error("El sector 'Campo' esta agotado."); continue
             return 0
         if op == 2:
-            if ev.platea_stock <= 0:
-                msg_error("El sector 'Platea' esta agotado."); continue
+            if ev.platea_stock <= 0: msg_error("El sector 'Platea' esta agotado."); continue
             return 1
         msg_error("Sector invalido.")
-
 
 def comprar_entradas() -> None:
     limpiar(); banner()
@@ -464,7 +433,24 @@ def comprar_entradas() -> None:
     platea = seleccionar_sector(ev)
     if platea == -1: return
 
-    precio = ev.platea_price if platea == 1 else ev.campo_price
+    precio_base = ev.platea_price if platea == 1 else ev.campo_price
+    
+    # Aplicación del código de descuento
+    descuento_aplicado = 0
+    try:
+        cupon_ingresado = Prompt.ask(f"\n  [{CELESTE}]¿Tenés un código de descuento? (Enter para omitir)[/]", console=console, default="").strip().upper()
+        if cupon_ingresado:
+            if ev.discount_code and cupon_ingresado == ev.discount_code.upper():
+                descuento_aplicado = ev.discount_pct
+                msg_exito(f"¡Código válido! Se aplicará un {descuento_aplicado}% de descuento.")
+                time.sleep(1)
+            else:
+                msg_error("Código inválido o no aplicable a este concierto.")
+                time.sleep(1)
+    except (KeyboardInterrupt, EOFError):
+        pass
+
+    precio_final = precio_base * (100 - descuento_aplicado) // 100
     fecha_compra = time.strftime("%d/%m/%Y %H:%M")
 
     console.print()
@@ -475,7 +461,10 @@ def comprar_entradas() -> None:
     t.add_row("Evento", f"[bold {CELESTE}]{ev.name}[/] ({from_unix(ev.date)})")
     t.add_row("Lugar",  ev.place)
     t.add_row("Sector", "Platea" if platea == 1 else "Campo")
-    t.add_row("Precio", f"[bold {DORADO}]${precio:,}[/]")
+    if descuento_aplicado > 0:
+        t.add_row("Precio Base", f"${precio_base:,}")
+        t.add_row("Descuento", f"-{descuento_aplicado}% ({ev.discount_code})")
+    t.add_row("Precio Total", f"[bold {DORADO}]${precio_final:,}[/]")
     console.print(t)
     separador()
 
@@ -489,7 +478,7 @@ def comprar_entradas() -> None:
 
     spinner_carga("Procesando pago", 1.8)
 
-    if database.create_ticket(ev.name, usuario_activo, precio, fecha_compra, platea):
+    if database.create_ticket(ev.name, usuario_activo, precio_final, fecha_compra, platea):
         msg_exito("Compra exitosa!")
         console.print(f"  [dim {GRIS_SUB}]Podes verla en 'Mis entradas'.[/]")
     else:
@@ -499,7 +488,7 @@ def comprar_entradas() -> None:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-#  MODULO: MIS ENTRADAS  -> database.list_tickets()
+#  MODULO: MIS ENTRADAS 
 # ═══════════════════════════════════════════════════════════════════════════
 
 def mis_entradas() -> None:
@@ -545,11 +534,7 @@ def menu_principal() -> None:
 
     while True:
         limpiar(); banner()
-
-        console.print(
-            f"\n  [{GRIS_SUB}]Sesion iniciada como[/] "
-            f"[bold {DORADO}]{usuario_activo}[/]\n"
-        )
+        console.print(f"\n  [{GRIS_SUB}]Sesion iniciada como[/] [bold {DORADO}]{usuario_activo}[/]\n")
 
         tabla = Table(box=box.SIMPLE, show_header=False, padding=(0, 2))
         tabla.add_column("Op",     style=f"bold {DORADO}", width=6,  justify="center")
@@ -561,10 +546,7 @@ def menu_principal() -> None:
         separador()
 
         try:
-            opcion = Prompt.ask(
-                f"\n  [{CELESTE}]Tu eleccion[/]",
-                console=console, default="", show_default=False
-            ).strip()
+            opcion = Prompt.ask(f"\n  [{CELESTE}]Tu eleccion[/]", console=console, default="", show_default=False).strip()
         except (KeyboardInterrupt, EOFError):
             opcion = "0"
 
@@ -579,3 +561,13 @@ def menu_principal() -> None:
 
         _, accion = OPCIONES[opcion]
         accion()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  PUNTO DE ENTRADA
+# ═══════════════════════════════════════════════════════════════════════════
+
+if __name__ == "__main__":
+    inicializar_db()
+    usuario_activo = pantalla_inicio()
+    menu_principal()
