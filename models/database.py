@@ -115,6 +115,7 @@ def login_user(email, password):
 
 def read_event(ev_name):
 
+
 	data = db.execute(f'SELECT * FROM EVENTS WHERE NAME="{ev_name}";').fetchone()
 
 	if data is None:
@@ -228,7 +229,7 @@ def create_ticket(event, user, price, date, platea):
 
 	if stock>0 :
 		try:
-			conn.execute(f'INSERT INTO TICKETS VALUES("{event}", "{user}", {price}, "{date}", {platea});')
+			conn.execute(f'INSERT INTO TICKETS VALUES("{event}", "{user}", {price}, "{to_unix(date)}", {platea});')
 			conn.commit()
 
 		except sqlite3.Error:
@@ -248,7 +249,7 @@ def create_ticket(event, user, price, date, platea):
 
 
 
-def list_tickets(user):
+def list_ticket(user):
 
 	data = db.execute(f'SELECT * FROM TICKETS WHERE USER="{user}";').fetchall()
 
