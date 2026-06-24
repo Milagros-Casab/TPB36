@@ -1,7 +1,5 @@
 #=================================================#
 #                                                 #
-#     models.database (mantenido por Obregon)     #
-#                                                 #
 #      Todas las funciones necesarias que         #
 #       usan la base de datos están aquí.         #
 #                                                 #
@@ -246,4 +244,27 @@ def create_ticket(event, user, price, date, platea):
 			return True
 
 	return False
+#
+
+
+
+def list_tickets(user):
+
+	data = db.execute(f'SELECT * FROM TICKETS WHERE USER="{user}";').fetchall()
+
+	class ret:
+		event =  []
+		user =   []
+		price =  []
+		date =   []
+		platea = []
+
+	for row in data:
+		ret.event.append(row["EVENT"])
+		ret.user.append(row["USER"])
+		ret.price.append(row["PRICE"])
+		ret.date.append(row["DATE"])
+		ret.platea.append(row["PLATEA"])
+
+	return ret
 #
