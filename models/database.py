@@ -264,7 +264,7 @@ def list_tickets(user):
 		ret.user.append(row["USER"])
 		ret.price.append(row["PRICE"])
 		ret.date.append(row["DATE"])
-		ret.platea.append(row["PLATEA"])
+		ret.platea.append(row["TYPE"])
 
 	return ret
 #

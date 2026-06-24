@@ -579,13 +579,3 @@ def menu_principal() -> None:
 
         _, accion = OPCIONES[opcion]
         accion()
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-#  PUNTO DE ENTRADA
-# ═══════════════════════════════════════════════════════════════════════════
-
-if __name__ == "__main__":
-    inicializar_db()
-    usuario_activo = pantalla_inicio()
-    menu_principal()
