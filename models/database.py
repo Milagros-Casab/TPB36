@@ -31,6 +31,42 @@ def process_password(password):
 
 
 
+def create_database():
+	conn.executescript("""
+
+		CREATE TABLE IF NOT EXISTS "ACCOUNTS" (
+			"EMAIL"	TEXT,
+			"PASSWORD"	TEXT
+		);
+		CREATE TABLE IF NOT EXISTS "EVENTS" (
+			"NAME"	TEXT,
+			"PLACE"	TEXT,
+			"CAMPO_PRICE"	INTEGER,
+			"CAMPO_STOCK"	INTEGER,
+			"PLATEA_PRICE"	INTEGER,
+			"PLATEA_STOCK"	INTEGER,
+			"DATE"	INTEGER
+		);
+
+		CREATE TABLE IF NOT EXISTS "SALES" (
+			"CODE"	TEXT,
+			"TYPE"	INTEGER,
+			"VALUE"	INTEGER,
+			"EVENT"	TEXT
+		);
+
+		CREATE TABLE IF NOT EXISTS "TICKETS" (
+			"EVENT"	TEXT,
+			"USER"	TEXT,
+			"PRICE"	INTEGER,
+			"DATE"	TEXT,
+			"TYPE"	INTEGER
+		);
+
+	""")
+	conn.commit()
+
+
 # =========================================
 #    Manejo de cuentas de usuario
 # =========================================
@@ -250,7 +286,7 @@ def create_ticket(event, user, price, date, platea):
 
 
 def list_ticket(user):
-
+	print(user)
 	data = db.execute(f'SELECT * FROM TICKETS WHERE USER="{user}";').fetchall()
 
 	class ret:
