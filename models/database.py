@@ -5,266 +5,164 @@
 #                                                 #
 #=================================================#
 
-
 import sqlite3
 import hashlib
+from models.date import to_unix
 
-
-from models.date import *
-
+# Configuración de la base de datos
 database_file = "data.db"
-
 conn = sqlite3.connect(database_file)
 conn.row_factory = sqlite3.Row
 
-db = conn.cursor()
-
-
-
 def process_password(password):
-
 	hash_object = hashlib.blake2b(password.encode('utf-8'))
-
 	return hash_object.hexdigest()
-
-#
-
-
 
 # =========================================
 #    Manejo de cuentas de usuario
 # =========================================
 
-
-
 def read_user(email):
-
-	data = db.execute(f'SELECT * FROM ACCOUNTS WHERE EMAIL = "{email}";').fetchone()
-
-	if data is None:
-		class ret:
-			email=False
-			password=False
-
-		return ret
-
+	data = conn.execute('SELECT * FROM ACCOUNTS WHERE EMAIL = ?;', (email,)).fetchone()
 	class ret:
-		email = data["EMAIL"]
-		password= data["PASSWORD"]
-
-	return ret
-
-#
-
-
+		email = False
+		password = False
+	
+	res = ret()
+	if data:
+		res.email = data["EMAIL"]
+		res.password = data["PASSWORD"]
+	return res
 
 def create_user(email, password):
-
 	hash_password = process_password(password)
-
-	if read_user(email).email==False:
+	if read_user(email).email is False:
 		try:
-			conn.execute(f'INSERT INTO ACCOUNTS VALUES("{email}", "{hash_password}");')
-			conn.commit();
-
+			conn.execute('INSERT INTO ACCOUNTS VALUES(?, ?);', (email, hash_password))
+			conn.commit()
+			return True
 		except sqlite3.Error:
 			return False
-
-		return True
-
 	return False
-#
-
-
 
 def purge_user(email):
-
-	if read_user(email)!=False:
+	if read_user(email).email is not False:
 		try:
-			conn.execute(f'DELETE FROM ACCOUNTS WHERE EMAIL="{email}"')
-			conn.commit();
-
+			conn.execute('DELETE FROM ACCOUNTS WHERE EMAIL = ?;', (email,))
+			conn.commit()
+			return True
 		except sqlite3.Error:
 			return False
-
-		return True
-
 	return False
-
-
 
 def login_user(email, password):
-
-	hash_password = process_password(password)
-
-	if read_user(email).email != False:
-
-		if(read_user(email).password == hash_password):
-			return True
-
+	user = read_user(email)
+	if user.email is not False:
+		return user.password == process_password(password)
 	return False
-#
-
-
 
 # =========================================
 #    Manejo de eventos
 # =========================================
 
-
-
 def read_event(ev_name):
-
-	data = db.execute(f'SELECT * FROM EVENTS WHERE NAME="{ev_name}";').fetchone()
-
-	if data is None:
-		class ret:
-			name=False
-			place=False
-			campo_price=0
-			campo_stock=0
-			campo_price=0
-			campo_stock=0
-			date=0
-
-		return ret
-
+	data = conn.execute('SELECT * FROM EVENTS WHERE NAME = ?;', (ev_name,)).fetchone()
 	class ret:
-		name= data["NAME"]
-		place= data["PLACE"]
-		campo_price=data["CAMPO_PRICE"]
-		campo_stock=data["CAMPO_STOCK"]
-		platea_price=data["PLATEA_PRICE"]
-		platea_stock=data["PLATEA_STOCK"]
-		date=data["DATE"]
+		name = False
+		place = False
+		campo_price = 0
+		campo_stock = 0
+		platea_price = 0
+		platea_stock = 0
+		date = 0
+		discount_code = ""
+		discount_pct = 0
+	
+	res = ret()
+	if data:
+		res.name = data["NAME"]
+		res.place = data["PLACE"]
+		res.campo_price = data["CAMPO_PRICE"]
+		res.campo_stock = data["CAMPO_STOCK"]
+		res.platea_price = data["PLATEA_PRICE"]
+		res.platea_stock = data["PLATEA_STOCK"]
+		res.date = data["DATE"]
+		# Compatibilidad por si se lee una fila vieja sin estas columnas
+		keys = data.keys()
+		res.discount_code = data["DISCOUNT_CODE"] if "DISCOUNT_CODE" in keys else ""
+		res.discount_pct = data["DISCOUNT_PCT"] if "DISCOUNT_PCT" in keys else 0
+	return res
 
-	return ret
-#
-
-
-
-def create_event(name, place, campo_price, campo_stock, platea_price, platea_stock, date):
-
-	if read_event(name).name==False:
+# CORRECCIÓN AQUÍ: Ahora acepta 9 parámetros con valores por defecto
+def create_event(name, place, campo_price, campo_stock, platea_price, platea_stock, date, discount_code="", discount_pct=0):
+	if read_event(name).name is False:
 		try:
-			conn.execute(f'INSERT INTO EVENTS VALUES("{name}", "{place}", {campo_price}, {campo_stock}, {platea_price}, {platea_stock}, {to_unix(date)});')
-			conn.commit();
-
-		except sqlite3.Error:
-			return False		# False on SQL error
-
-		return True			# True if correctly executed
-
-	return False			# False if event already exists
-#
-
-
-
-def purge_event(name):
-
-	ev = read_event(name)
-
-	if ev.name!=False:
-		try:
-			conn.execute(f'DELETE FROM EVENTS WHERE NAME="{name}"')
-			conn.commit();
-
+			conn.execute(
+				'INSERT INTO EVENTS VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?);',
+				(name, place, campo_price, campo_stock, platea_price, platea_stock, to_unix(date), discount_code, discount_pct)
+			)
+			conn.commit()
+			return True
 		except sqlite3.Error:
 			return False
-
-		return True
-
 	return False
-#
 
-
+def purge_event(name):
+	if read_event(name).name is not False:
+		try:
+			conn.execute('DELETE FROM EVENTS WHERE NAME = ?;', (name,))
+			conn.commit()
+			return True
+		except sqlite3.Error:
+			return False
+	return False
 
 def list_event(part):
-
-	data = db.execute('SELECT * FROM EVENTS;').fetchall()
-
-
+	data = conn.execute('SELECT * FROM EVENTS;').fetchall()
 	class ret:
-		name =         []
-		place =        []
-		campo_price =  []
-		campo_stock =  []
-		platea_price = []
-		platea_stock = []
-		date =         []
-
-
-	for row in data:
-		ret.name.append(row["NAME"])
-		ret.place.append(row["PLACE"])
-		ret.campo_price.append(row["CAMPO_PRICE"])
-		ret.campo_stock.append(row["CAMPO_STOCK"])
-		ret.platea_price.append(row["PLATEA_PRICE"])
-		ret.platea_stock.append(row["PLATEA_STOCK"])
-		ret.date.append(row["DATE"])
-
-	return ret
-#
-
-
+		pass
+	
+	res = ret()
+	res.name = [row["NAME"] for row in data]
+	res.place = [row["PLACE"] for row in data]
+	res.campo_price = [row["CAMPO_PRICE"] for row in data]
+	res.campo_stock = [row["CAMPO_STOCK"] for row in data]
+	res.platea_price = [row["PLATEA_PRICE"] for row in data]
+	res.platea_stock = [row["PLATEA_STOCK"] for row in data]
+	res.date = [row["DATE"] for row in data]
+	
+	keys = data[0].keys() if data else []
+	res.discount_code = [row["DISCOUNT_CODE"] if "DISCOUNT_CODE" in keys else "" for row in data]
+	res.discount_pct = [row["DISCOUNT_PCT"] if "DISCOUNT_PCT" in keys else 0 for row in data]
+	return res
 
 # =========================================
 #    Manejo de tickets
 # =========================================
 
-
-
 def create_ticket(event, user, price, date, platea):
-
-	selected_event = db.execute(f'SELECT * FROM EVENTS WHERE NAME="{event}";').fetchone()
-	stock = 0
-
-
-	if(platea == 1): stock = db.execute(f'SELECT PLATEA_STOCK FROM EVENTS WHERE NAME="{event}";').fetchone()["PLATEA_STOCK"]
-	else: stock = db.execute(f'SELECT CAMPO_STOCK FROM EVENTS WHERE NAME="{event}";').fetchone()["CAMPO_STOCK"]
-
-	if stock == None: return False
-
-
-	if stock>0 :
+	col_stock = "PLATEA_STOCK" if platea == 1 else "CAMPO_STOCK"
+	row = conn.execute(f'SELECT {col_stock} FROM EVENTS WHERE NAME = ?;', (event,)).fetchone()
+	
+	if row and row[col_stock] > 0:
 		try:
-			conn.execute(f'INSERT INTO TICKETS VALUES("{event}", "{user}", {price}, "{date}", {platea});')
+			conn.execute('INSERT INTO TICKETS VALUES(?, ?, ?, ?, ?);', (event, user, price, date, platea))
+			conn.execute(f'UPDATE EVENTS SET {col_stock} = {col_stock} - 1 WHERE NAME = ?;', (event,))
 			conn.commit()
-
+			return True
 		except sqlite3.Error:
 			return False
-
-		else:
-			if(platea == 1):
-				conn.execute(f'UPDATE EVENTS SET PLATEA_STOCK=(PLATEA_STOCK-1) WHERE NAME="{event}";')
-				conn.commit()
-			else:
-				conn.execute(f'UPDATE EVENTS SET CAMPO_STOCK=(CAMPO_STOCK-1) WHERE NAME="{event}";')
-				conn.commit()
-			return True
-
 	return False
-#
-
-
 
 def list_tickets(user):
-
-	data = db.execute(f'SELECT * FROM TICKETS WHERE USER="{user}";').fetchall()
-
+	data = conn.execute('SELECT * FROM TICKETS WHERE USER = ?;', (user,)).fetchall()
 	class ret:
-		event =  []
-		user =   []
-		price =  []
-		date =   []
-		platea = []
-
-	for row in data:
-		ret.event.append(row["EVENT"])
-		ret.user.append(row["USER"])
-		ret.price.append(row["PRICE"])
-		ret.date.append(row["DATE"])
-		ret.platea.append(row["TYPE"])
-
-	return ret
-#
+		pass
+	
+	res = ret()
+	res.event = [row["EVENT"] for row in data]
+	res.user = [row["USER"] for row in data]
+	res.price = [row["PRICE"] for row in data]
+	res.date = [row["DATE"] for row in data]
+	res.platea = [row["PLATEA"] for row in data]
+	return res
