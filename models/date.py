@@ -1,30 +1,26 @@
 #=================================================#
 #                                                 #
-#       models.date (mantenido por Obregon)       #
-#                                                 #
-#    Para guardar y manejar fechas y horarios     #
-#              gracias al UNIX Epoch              #
+#     models.date — utilidades de fecha           #
 #                                                 #
 #=================================================#
 
-
 from datetime import datetime
 
-# day-month-year hour:minute
-time_format = "%d-%m-%Y %H:%M"
+FORMATO = "%d/%m/%Y"
 
 
+def to_unix(fecha_str):
+	"""Convierte 'dd/mm/yyyy' a timestamp unix (int)."""
+	try:
+		dt = datetime.strptime(fecha_str, FORMATO)
+		return int(dt.timestamp())
+	except (ValueError, TypeError):
+		return 0
 
-# Turns a date and hour into UNIX timestamp
-def to_unix(date):
 
-	return int( datetime.strptime(date, time_format).timestamp() )
-#
-
-
-
-# Turns UNIX timestamp into a string
-def from_unix(seconds):
-
-	return datetime.fromtimestamp(seconds).strftime(time_format)
-#
+def from_unix(timestamp):
+	"""Convierte timestamp unix (int) a 'dd/mm/yyyy'."""
+	try:
+		return datetime.fromtimestamp(int(timestamp)).strftime(FORMATO)
+	except (ValueError, TypeError, OSError):
+		return "—"
