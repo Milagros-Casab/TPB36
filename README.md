@@ -7,7 +7,7 @@ integrantes:
 - Thiago Holzman Zorzon   
 - Máximo Amir Ramirez
 - Vallejos Sanchez Gabriel Omar
-- 
+- Casabuena Milagros Sofía
 *agreguen todos sus nombres completos*
 
 ## definicion:
