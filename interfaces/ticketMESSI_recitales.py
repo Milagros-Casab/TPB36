@@ -23,7 +23,7 @@ from rich.spinner import Spinner
 
 import models.database as database
 import models.sales_database as sales_database
-import models.stats_event as stats_event
+
 from models.date import from_unix
 
 console = Console()
