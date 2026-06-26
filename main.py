@@ -1,5 +1,6 @@
+
 import sqlite3
-from ticketMESSI_recitales import *
+from interfaces.ticketMESSI_recitales import *
 
 from models.database import *
 from models.sales_database import *
@@ -10,11 +11,13 @@ from models.date import *
 
 
 """
-Punto de entrada de ticketMESSI — Sistema de Recitales.
+Punto de entrada de ticketMESSI — Sistema de recitales
 """
 
-from ticketMESSI_recitales import inicializar_db, main
-
 if __name__ == "__main__":
-    inicializar_db()
+    create_database()
     main()
+
+
+
+
