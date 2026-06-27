@@ -24,7 +24,6 @@ from rich.spinner import Spinner
 import models.database as database
 import models.sales_database as sales_database
 import models.stats_event as stats_event
-
 from models.date import from_unix
 
 console = Console()
@@ -51,9 +50,10 @@ def es_admin() -> bool:
 #  INICIALIZACION DE TABLAS
 # ═══════════════════════════════════════════════════════════════════════════
 
+
     # Crear cuenta de administrador si no existe
-if database.login_user(ADMIN_EMAIL, "admin1234")==False:
-    database.create_user(ADMIN_EMAIL, "admin1234")
+    if database.login_user(ADMIN_EMAIL, "admin1234")==False:
+        database.create_user(ADMIN_EMAIL, "admin1234")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -120,6 +120,14 @@ def pedir_entero(prompt: str, minval: int = 1) -> int:
             return val
         msg_error(f"El valor debe ser mayor o igual a {minval}.")
 
+def pedir_contrasena(prompt: str) -> str:
+    """Pide una contraseña sin mostrar los caracteres, avisando antes por privacidad."""
+    console.print(f"  [dim {GRIS_SUB}](Los caracteres no se muestran por privacidad)[/]")
+    try:
+        return Prompt.ask(f"  [{CELESTE}]{prompt}[/]", console=console, password=True)
+    except (KeyboardInterrupt, EOFError):
+        raise
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 #  PANTALLA DE INICIO
@@ -162,7 +170,7 @@ def pantalla_inicio() -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-#  REGISTRO 
+#  REGISTRO
 # ═══════════════════════════════════════════════════════════════════════════
 
 def flujo_registro() -> str:
@@ -175,11 +183,11 @@ def flujo_registro() -> str:
         if database.check_email(email)==False:
             msg_error("Email invalido."); pausar(); return ""
 
-        contrasena = Prompt.ask(f"  [{CELESTE}]  Contrasena[/]", console=console, password=True)
+        contrasena = pedir_contrasena("  Contrasena")
         if not contrasena or len(contrasena) < 4:
             msg_error("La contrasena debe tener al menos 4 caracteres."); pausar(); return ""
 
-        contrasena2 = Prompt.ask(f"  [{CELESTE}]  Repeti la contrasena[/]", console=console, password=True)
+        contrasena2 = pedir_contrasena("  Repeti la contrasena")
         if contrasena != contrasena2:
             msg_error("Las contrasenas no coinciden."); pausar(); return ""
     except (KeyboardInterrupt, EOFError):
@@ -197,7 +205,7 @@ def flujo_registro() -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-#  LOGIN 
+#  LOGIN
 # ═══════════════════════════════════════════════════════════════════════════
 
 def flujo_login() -> str:
@@ -213,7 +221,7 @@ def flujo_login() -> str:
             email = pedir_texto("  Email", minlen=1)
             if not email: return ""
 
-            contrasena = Prompt.ask(f"  [{CELESTE}]  Contrasena[/]", console=console, password=True)
+            contrasena = pedir_contrasena("  Contrasena")
             if not contrasena:
                 msg_error("La contrasena no puede estar vacia.")
                 time.sleep(1); continue
@@ -239,17 +247,27 @@ def flujo_login() -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-#  MODULO: VER EVENTOS 
+#  MODULO: VER EVENTOS
 # ═══════════════════════════════════════════════════════════════════════════
 
-def mostrar_eventos(pausa: bool = True) -> None:
+def evento_finalizado(ev) -> bool:
+    """True si la fecha del evento ya pasó."""
+    return ev.date <= int(time.time())
+
+def mostrar_eventos(pausa: bool = True, solo_futuros: bool = False) -> None:
     limpiar(); banner()
     separador(" EVENTOS DISPONIBLES ")
     console.print()
 
     eventos = database.list_event("")
+    ahora = int(time.time())
 
-    if not eventos.name:
+    if solo_futuros:
+        indices = [i for i in range(len(eventos.name)) if eventos.date[i] > ahora]
+    else:
+        indices = list(range(len(eventos.name)))
+
+    if not indices:
         msg_info("No hay eventos disponibles.")
         if pausa: pausar()
         return
@@ -261,17 +279,22 @@ def mostrar_eventos(pausa: bool = True) -> None:
     tabla.add_column("Fecha",   style=BLANCO,            justify="center", width=12)
     tabla.add_column("Estado",  justify="center",        width=22)
 
-    for i, nombre in enumerate(eventos.name, 1):
-        libres = eventos.campo_stock[i - 1] + eventos.platea_stock[i - 1]
-        estado = f"[{VERDE}]OK {libres} entradas[/]" if libres > 0 else f"[{ROJO_ERR}]AGOTADO[/]"
-        tabla.add_row(str(i), nombre, eventos.place[i - 1], from_unix(eventos.date[i - 1]), estado)
+    for pos, i in enumerate(indices, 1):
+        libres = eventos.campo_stock[i] + eventos.platea_stock[i]
+        if eventos.date[i] <= ahora:
+            estado = f"[dim {GRIS_SUB}]FINALIZADO[/]"
+        elif libres > 0:
+            estado = f"[{VERDE}]OK {libres} entradas[/]"
+        else:
+            estado = f"[{ROJO_ERR}]AGOTADO[/]"
+        tabla.add_row(str(pos), eventos.name[i], eventos.place[i], from_unix(eventos.date[i]), estado)
 
     console.print(tabla)
     if pausa: pausar()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-#  MODULO: AGREGAR EVENTO 
+#  MODULO: AGREGAR EVENTO
 # ═══════════════════════════════════════════════════════════════════════════
 
 def agregar_evento() -> None:
@@ -295,13 +318,6 @@ def agregar_evento() -> None:
         platea_price = pedir_entero("  Precio Platea ($)", minval=1)
         platea_stock = pedir_entero("  Capacidad Platea", minval=1)
 
-        separador(" CONFIGURACIÓN DE DESCUENTO ")
-        disc_code = Prompt.ask(f"  [{CELESTE}]Código de descuento (Enter para omitir)[/]", console=console, default="").strip().upper()
-        disc_pct = 0
-        if disc_code:
-            disc_pct = pedir_entero("  Porcentaje de beneficio (1-100%)", minval=1)
-            if disc_pct > 100: disc_pct = 100
-
     except (KeyboardInterrupt, EOFError):
         return
 
@@ -315,7 +331,6 @@ def agregar_evento() -> None:
     t.add_row("Fecha",  fecha)
     t.add_row("Campo",  f"${campo_price:,}  x {campo_stock}")
     t.add_row("Platea", f"${platea_price:,}  x {platea_stock}")
-    t.add_row("Cupón",  f"{disc_code} (-{disc_pct}%)" if disc_code else "Ninguno")
     console.print(t)
     separador()
 
@@ -332,12 +347,184 @@ def agregar_evento() -> None:
     fecha_con_hora = fecha if " " in fecha else f"{fecha} 00:00"
 
     if database.create_event(nombre, lugar, campo_price, campo_stock, platea_price, platea_stock, fecha_con_hora):
-        if disc_code:
-            # Registrar el código en la tabla SALES (tipo 0 = porcentaje)
-            sales_database.create_sale(disc_code, 0, disc_pct, nombre)
-        msg_exito(f"Evento '{nombre}' guardado.")
+        msg_exito(f"Evento '{nombre}' guardado. Podes agregarle un codigo de promocion desde el menu.")
     else:
         msg_error(f"Ya existe un evento llamado '{nombre}'.")
+
+    pausar()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  MODULO: EDITAR EVENTO
+# ═══════════════════════════════════════════════════════════════════════════
+
+def editar_evento() -> None:
+    limpiar(); banner()
+    separador(" EDITAR EVENTO ")
+
+    nombre_evento = seleccionar_evento(solo_futuros=False)
+    if not nombre_evento: return
+
+    ev = database.read_event(nombre_evento)
+    if ev.name is False:
+        msg_error("El evento ya no existe."); pausar(); return
+
+    console.print()
+    msg_info("Dejá vacío cualquier campo para mantener el valor actual.")
+
+    try:
+        lugar = Prompt.ask(f"  [{CELESTE}]Lugar[/] [dim](actual: {ev.place})[/]", console=console, default="").strip()
+        lugar = lugar if lugar else ev.place
+
+        fecha_actual = from_unix(ev.date)
+        fecha = Prompt.ask(f"  [{CELESTE}]Fecha DD/MM/YYYY hh:mm[/] [dim](actual: {fecha_actual})[/]", console=console, default="").strip()
+        fecha = fecha if fecha else fecha_actual
+
+        cp = Prompt.ask(f"  [{CELESTE}]Precio Campo[/] [dim](actual: ${ev.campo_price})[/]", console=console, default="").strip()
+        campo_price = int(cp) if cp else ev.campo_price
+
+        cs = Prompt.ask(f"  [{CELESTE}]Stock Campo[/] [dim](actual: {ev.campo_stock})[/]", console=console, default="").strip()
+        campo_stock = int(cs) if cs else ev.campo_stock
+
+        pp = Prompt.ask(f"  [{CELESTE}]Precio Platea[/] [dim](actual: ${ev.platea_price})[/]", console=console, default="").strip()
+        platea_price = int(pp) if pp else ev.platea_price
+
+        ps = Prompt.ask(f"  [{CELESTE}]Stock Platea[/] [dim](actual: {ev.platea_stock})[/]", console=console, default="").strip()
+        platea_stock = int(ps) if ps else ev.platea_stock
+    except (KeyboardInterrupt, EOFError):
+        msg_info("Edicion cancelada."); pausar(); return
+    except ValueError:
+        msg_error("Valor numerico invalido."); pausar(); return
+
+    console.print()
+    separador(" CONFIRMAR CAMBIOS ")
+    t = Table(box=box.SIMPLE, show_header=False, padding=(0, 1))
+    t.add_column("Campo", style=f"dim {GRIS_SUB}", width=14)
+    t.add_column("Valor", style=BLANCO)
+    t.add_row("Evento", f"[bold {CELESTE}]{nombre_evento}[/]")
+    t.add_row("Lugar",  lugar)
+    t.add_row("Fecha",  fecha)
+    t.add_row("Campo",  f"${campo_price:,}  x {campo_stock}")
+    t.add_row("Platea", f"${platea_price:,}  x {platea_stock}")
+    console.print(t)
+    separador()
+
+    try:
+        ok = Confirm.ask(f"\n  [{CELESTE}]Guardar los cambios?[/]", console=console)
+    except (KeyboardInterrupt, EOFError):
+        ok = False
+
+    if not ok:
+        msg_info("Edicion cancelada."); pausar(); return
+
+    spinner_carga("Actualizando evento", 1.0)
+
+    fecha_con_hora = fecha if " " in fecha else f"{fecha} 00:00"
+
+    if database.update_event(nombre_evento, lugar, campo_price, campo_stock, platea_price, platea_stock, fecha_con_hora):
+        msg_exito("Evento actualizado.")
+    else:
+        msg_error("No se pudo actualizar el evento.")
+
+    pausar()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  MODULO: ELIMINAR EVENTO
+# ═══════════════════════════════════════════════════════════════════════════
+
+def eliminar_evento() -> None:
+    limpiar(); banner()
+    separador(" ELIMINAR EVENTO ")
+
+    nombre_evento = seleccionar_evento(solo_futuros=False)
+    if not nombre_evento: return
+
+    try:
+        ok = Confirm.ask(
+            f"\n  [{ROJO_ERR}]Seguro que querés eliminar '{nombre_evento}'? Esta accion no se puede deshacer.[/]",
+            console=console
+        )
+    except (KeyboardInterrupt, EOFError):
+        ok = False
+
+    if not ok:
+        msg_info("Operacion cancelada."); pausar(); return
+
+    spinner_carga("Eliminando evento", 1.0)
+
+    if database.purge_event(nombre_evento):
+        msg_exito(f"Evento '{nombre_evento}' eliminado.")
+    else:
+        msg_error("No se pudo eliminar el evento.")
+
+    pausar()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  MODULO: CODIGOS DE PROMOCION
+# ═══════════════════════════════════════════════════════════════════════════
+
+def agregar_promocode() -> None:
+    limpiar(); banner()
+    separador(" AGREGAR CODIGO DE PROMOCION ")
+
+    nombre_evento = seleccionar_evento(solo_futuros=False)
+    if not nombre_evento: return
+
+    try:
+        codigo = pedir_texto("  Codigo: ", minlen=2).upper()
+
+        console.print()
+        tabla = Table(box=box.SIMPLE, show_header=False, padding=(0, 2))
+        tabla.add_column("Op", style=f"bold {DORADO}", width=4, justify="center")
+        tabla.add_column("Tipo", style=BLANCO)
+        tabla.add_row("1", "Descuento porcentual (%)")
+        tabla.add_row("2", "Descuento de monto fijo ($)")
+        console.print(tabla)
+
+        tipo_op = pedir_entero("  Tipo de descuento (1 o 2)", minval=1)
+        while tipo_op not in (1, 2):
+            msg_error("Opcion invalida. Ingresa 1 o 2.")
+            tipo_op = pedir_entero("  Tipo de descuento (1 o 2)", minval=1)
+
+        if tipo_op == 1:
+            valor = pedir_entero("  Porcentaje de descuento (1-100)", minval=1)
+            if valor > 100: valor = 100
+            tipo_db = 0
+        else:
+            valor = pedir_entero("  Monto de descuento ($)", minval=1)
+            tipo_db = 1
+    except (KeyboardInterrupt, EOFError):
+        return
+
+    console.print()
+    separador(" CONFIRMAR CODIGO ")
+    t = Table(box=box.SIMPLE, show_header=False, padding=(0, 1))
+    t.add_column("Campo", style=f"dim {GRIS_SUB}", width=14)
+    t.add_column("Valor", style=BLANCO)
+    t.add_row("Evento", f"[bold {CELESTE}]{nombre_evento}[/]")
+    t.add_row("Codigo", codigo)
+    t.add_row("Descuento", f"{valor}%" if tipo_db == 0 else f"${valor:,}")
+    console.print(t)
+    separador()
+
+    try:
+        ok = Confirm.ask(f"\n  [{CELESTE}]Guardar el codigo '{codigo}'?[/]", console=console)
+    except (KeyboardInterrupt, EOFError):
+        ok = False
+
+    if not ok:
+        msg_info("Operacion cancelada."); pausar(); return
+
+    spinner_carga("Guardando codigo", 1.0)
+
+    resultado = sales_database.create_sale(codigo, tipo_db, valor, nombre_evento)
+
+    if resultado is True:
+        msg_exito(f"Codigo '{codigo}' agregado al evento '{nombre_evento}'.")
+    else:
+        msg_error("No se pudo agregar el codigo.")
 
     pausar()
 
@@ -374,9 +561,16 @@ def ver_estadisticas() -> None:
 #  MODULO: COMPRA
 # ═══════════════════════════════════════════════════════════════════════════
 
-def seleccionar_evento() -> str:
-    mostrar_eventos(pausa=False)
+def seleccionar_evento(solo_futuros: bool = False) -> str:
+    mostrar_eventos(pausa=False, solo_futuros=solo_futuros)
     eventos = database.list_event("")
+    ahora = int(time.time())
+
+    if solo_futuros:
+        nombres_disponibles = [n for n, d in zip(eventos.name, eventos.date) if d > ahora]
+    else:
+        nombres_disponibles = eventos.name
+
     separador()
     while True:
         try:
@@ -384,8 +578,8 @@ def seleccionar_evento() -> str:
         except (KeyboardInterrupt, EOFError):
             return ""
         if num == 0: return ""
-        if 1 <= num <= len(eventos.name):
-            return eventos.name[num - 1]
+        if 1 <= num <= len(nombres_disponibles):
+            return nombres_disponibles[num - 1]
         msg_error("Evento no encontrado.")
 
 def seleccionar_sector(ev) -> int:
@@ -424,43 +618,50 @@ def comprar_entradas() -> None:
     limpiar(); banner()
     separador(" COMPRA DE ENTRADAS ")
 
-    nombre_evento = seleccionar_evento()
+    nombre_evento = seleccionar_evento(solo_futuros=True)
     if not nombre_evento: return
 
     ev = database.read_event(nombre_evento)
     if ev.name is False:
         msg_error("El evento ya no existe."); pausar(); return
 
+    if evento_finalizado(ev):
+        msg_error("Este evento ya finalizo. No se pueden comprar entradas."); pausar(); return
+
     platea = seleccionar_sector(ev)
     if platea == -1: return
 
     precio_base = ev.platea_price if platea == 1 else ev.campo_price
+    precio_final = precio_base
+    cupon_ingresado = ""
 
     # Aplicación del código de descuento via sales_database
-    descuento_aplicado = 0
-    cupon_ingresado = ""
     hay_promos = sales_database.sales(ev.name) > 0
     if hay_promos:
-        try:
-            cupon_ingresado = Prompt.ask(
-                f"\n  [{CELESTE}]¿Tenés un código de descuento? (Enter para omitir)[/]",
-                console=console, default=""
-            ).strip().upper()
-            if cupon_ingresado:
-                promo = sales_database.read_sale(cupon_ingresado, ev.name)
-                if promo.event == ev.name:
-                    precio_con_descuento = sales_database.apply_sale(cupon_ingresado, ev.name, precio_base)
-                    descuento_aplicado = int(round(100 * (1 - precio_con_descuento / precio_base))) if precio_base else 0
-                    msg_exito(f"¡Código válido! Descuento aplicado ({descuento_aplicado}%).")
-                    time.sleep(1)
-                else:
-                    msg_error("Código inválido o no aplicable a este evento.")
-                    cupon_ingresado = ""
-                    time.sleep(1)
-        except (KeyboardInterrupt, EOFError):
-            pass
+        while True:
+            try:
+                cupon_ingresado = Prompt.ask(
+                    f"\n  [{CELESTE}]¿Tenés un código de descuento? (Enter para omitir)[/]",
+                    console=console, default=""
+                ).strip().upper()
+            except (KeyboardInterrupt, EOFError):
+                cupon_ingresado = ""
+                break
 
-    precio_final = precio_base * (100 - descuento_aplicado) // 100
+            if not cupon_ingresado:
+                break
+
+            promo = sales_database.read_sale(cupon_ingresado, ev.name)
+            if promo.event == ev.name:
+                precio_final = int(round(sales_database.apply_sale(cupon_ingresado, ev.name, precio_base)))
+                if precio_final < 0: precio_final = 0
+                msg_exito("¡Código válido! Descuento aplicado.")
+                time.sleep(1)
+                break
+            else:
+                msg_error("Código inválido o no aplicable a este evento. Probá de nuevo o dejá vacío para omitir.")
+                time.sleep(1)
+
     fecha_compra = time.strftime("%d/%m/%Y %H:%M")
 
     console.print()
@@ -471,9 +672,9 @@ def comprar_entradas() -> None:
     t.add_row("Evento", f"[bold {CELESTE}]{ev.name}[/] ({from_unix(ev.date)})")
     t.add_row("Lugar",  ev.place)
     t.add_row("Sector", "Platea" if platea == 1 else "Campo")
-    if descuento_aplicado > 0:
+    if precio_final < precio_base:
         t.add_row("Precio Base", f"${precio_base:,}")
-        t.add_row("Descuento", f"-{descuento_aplicado}% ({cupon_ingresado})")
+        t.add_row("Descuento", f"-${precio_base - precio_final:,} ({cupon_ingresado})")
     t.add_row("Precio Total", f"[bold {DORADO}]${precio_final:,}[/]")
     console.print(t)
     separador()
@@ -498,7 +699,7 @@ def comprar_entradas() -> None:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-#  MODULO: MIS ENTRADAS 
+#  MODULO: MIS ENTRADAS
 # ═══════════════════════════════════════════════════════════════════════════
 
 def mis_entradas() -> None:
@@ -534,15 +735,20 @@ def mis_entradas() -> None:
 # ═══════════════════════════════════════════════════════════════════════════
 
 def menu_principal() -> None:
-    OPCIONES_BASE = {
+    OPCIONES_USUARIO = {
         "1": ("  Comprar entradas",  comprar_entradas),
         "2": ("   Mis entradas",     mis_entradas),
-        "3": ("  Ver eventos",       lambda: mostrar_eventos(pausa=True)),
+        "3": ("  Ver eventos",       lambda: mostrar_eventos(pausa=True, solo_futuros=True)),
         "0": ("  Cerrar sesion",     None),
     }
     OPCIONES_ADMIN = {
-        "4": ("  Agregar nuevo evento", agregar_evento),
-        "5": ("  Ver estadisticas",     ver_estadisticas),
+        "1": ("  Ver eventos",                lambda: mostrar_eventos(pausa=True, solo_futuros=False)),
+        "2": ("  Agregar nuevo evento",        agregar_evento),
+        "3": ("  Editar evento",               editar_evento),
+        "4": ("  Eliminar evento",             eliminar_evento),
+        "5": ("  Agregar codigo de promocion", agregar_promocode),
+        "6": ("  Ver estadisticas",            ver_estadisticas),
+        "0": ("  Cerrar sesion",                None),
     }
 
     while True:
@@ -553,19 +759,13 @@ def menu_principal() -> None:
         else:
             console.print()
 
-        # Construir el dict de opciones según el rol
-        OPCIONES = dict(OPCIONES_BASE)
-        if es_admin():
-            OPCIONES.update(OPCIONES_ADMIN)
-        # Asegurar que "0" queda al final
-        OPCIONES = {k: v for k, v in OPCIONES.items() if k != "0"}
-        OPCIONES["0"] = OPCIONES_BASE["0"]
+        OPCIONES = OPCIONES_ADMIN if es_admin() else OPCIONES_USUARIO
 
         tabla = Table(box=box.SIMPLE, show_header=False, padding=(0, 2))
         tabla.add_column("Op",     style=f"bold {DORADO}", width=6,  justify="center")
         tabla.add_column("Accion", style=BLANCO,           width=30)
         for op, (desc, _) in OPCIONES.items():
-            color = ROJO_ERR if op == "0" else (VERDE if op == "4" else BLANCO)
+            color = ROJO_ERR if op == "0" else (VERDE if op == "2" else BLANCO)
             tabla.add_row(f"[{DORADO}][{op}][/]", f"[{color}]{desc}[/]")
         console.print(tabla)
         separador()
@@ -597,7 +797,3 @@ def main() -> None:
     usuario_activo = pantalla_inicio()
     menu_principal()
 
-
-if __name__ == "__main__":
-    main()
- 

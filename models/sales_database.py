@@ -31,6 +31,7 @@ db = conn.cursor()
 #	1: literal discount
 
 def create_sale(code, sale_type, value, event):
+	code=code.upper()
 
 	if read_event(event).name!=False:
 		try:
@@ -48,6 +49,7 @@ def create_sale(code, sale_type, value, event):
 
 
 def read_sale(code, event):
+	code=code.upper()
 
 	data = db.execute(f'SELECT * FROM SALES WHERE CODE="{code}" AND EVENT="{event}";').fetchone()
 
@@ -80,6 +82,7 @@ def sales(event):
 
 
 def apply_sale(code, event, price):
+	code=code.upper()
 
 	if sales(event)>0:
 		promo = read_sale(code, event)

@@ -233,6 +233,21 @@ def purge_event(name):
 #
 
 
+def update_event(name, place, campo_price, campo_stock, platea_price, platea_stock, date):
+
+	if read_event(name).name==False:
+		return False			# False si el evento no existe
+
+	try:
+		conn.execute(f'UPDATE EVENTS SET PLACE="{place}", CAMPO_PRICE={campo_price}, CAMPO_STOCK={campo_stock}, PLATEA_PRICE={platea_price}, PLATEA_STOCK={platea_stock}, DATE={to_unix(date)} WHERE NAME="{name}";')
+		conn.commit()
+
+	except sqlite3.Error:
+		return False		# False on SQL error
+
+	return True			# True if correctly executed
+#
+
 
 def list_event(part):
 
