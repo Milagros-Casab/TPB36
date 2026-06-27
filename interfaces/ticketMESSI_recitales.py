@@ -51,8 +51,8 @@ def es_admin() -> bool:
 # ═══════════════════════════════════════════════════════════════════════════
 
     # Crear cuenta de administrador si no existe
-    if not database.login_user(ADMIN_EMAIL, "admin1234"):
-        database.create_user(ADMIN_EMAIL, "admin1234")
+if database.login_user(ADMIN_EMAIL, "admin1234")==False:
+    database.create_user(ADMIN_EMAIL, "admin1234")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -171,7 +171,7 @@ def flujo_registro() -> str:
 
     try:
         email = pedir_texto("  Email", minlen=5)
-        if not email or "@" not in email:
+        if database.check_email(email)==False:
             msg_error("Email invalido."); pausar(); return ""
 
         contrasena = Prompt.ask(f"  [{CELESTE}]  Contrasena[/]", console=console, password=True)
