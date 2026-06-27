@@ -50,43 +50,6 @@ def es_admin() -> bool:
 #  INICIALIZACION DE TABLAS
 # ═══════════════════════════════════════════════════════════════════════════
 
-def inicializar_db() -> None:
-    database.conn.executescript("""
-        CREATE TABLE IF NOT EXISTS ACCOUNTS (
-            EMAIL    TEXT PRIMARY KEY,
-            PASSWORD TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS EVENTS (
-            NAME         TEXT PRIMARY KEY,
-            PLACE        TEXT NOT NULL,
-            CAMPO_PRICE  INTEGER NOT NULL,
-            CAMPO_STOCK  INTEGER NOT NULL,
-            PLATEA_PRICE INTEGER NOT NULL,
-            PLATEA_STOCK INTEGER NOT NULL,
-            DATE         INTEGER NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS TICKETS (
-            EVENT  TEXT NOT NULL,
-            USER   TEXT NOT NULL,
-            PRICE  INTEGER NOT NULL,
-            DATE   TEXT NOT NULL,
-            TYPE   INTEGER NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS SALES (
-            CODE  TEXT NOT NULL,
-            TYPE  INTEGER NOT NULL,
-            VALUE INTEGER NOT NULL,
-            EVENT TEXT NOT NULL,
-            PRIMARY KEY (CODE, EVENT)
-        );
-    """)
-
-    database.conn.commit()
-
-
     # Crear cuenta de administrador si no existe
     if not database.login_user(ADMIN_EMAIL, "admin1234"):
         database.create_user(ADMIN_EMAIL, "admin1234")
@@ -630,7 +593,6 @@ def menu_principal() -> None:
 
 def main() -> None:
     global usuario_activo
-    inicializar_db()
     usuario_activo = pantalla_inicio()
     menu_principal()
 

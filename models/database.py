@@ -8,6 +8,7 @@
 
 import sqlite3
 import hashlib
+import re
 
 
 from models.date import *
@@ -28,6 +29,17 @@ def process_password(password):
 	return hash_object.hexdigest()
 
 #
+
+
+def check_email(email):
+
+	pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+
+	if re.match(pattern, email):
+		return True
+	return False
+
+
 
 
 
@@ -75,18 +87,23 @@ def create_database():
 
 def read_user(email):
 
-	data = db.execute(f'SELECT * FROM ACCOUNTS WHERE EMAIL = "{email}";').fetchone()
+	class ret:
+		email=False
+		password=False
+
+	if check_email(email):
+		data = db.execute(f'SELECT * FROM ACCOUNTS WHERE EMAIL = "{email}";').fetchone()
+	else: return ret
 
 	if data is None:
-		class ret:
-			email=False
-			password=False
+		ret.email=False
+		ret.password=False
 
 		return ret
 
-	class ret:
-		email = data["EMAIL"]
-		password= data["PASSWORD"]
+
+	ret.email = data["EMAIL"]
+	ret.password= data["PASSWORD"]
 
 	return ret
 
@@ -98,7 +115,7 @@ def create_user(email, password):
 
 	hash_password = process_password(password)
 
-	if read_user(email).email==False:
+	if read_user(email).email==False and check_email(email):
 		try:
 			conn.execute(f'INSERT INTO ACCOUNTS VALUES("{email}", "{hash_password}");')
 			conn.commit();
@@ -115,7 +132,7 @@ def create_user(email, password):
 
 def purge_user(email):
 
-	if read_user(email)!=False:
+	if read_user(email)!=False and check_email(email):
 		try:
 			conn.execute(f'DELETE FROM ACCOUNTS WHERE EMAIL="{email}"')
 			conn.commit();
@@ -133,7 +150,7 @@ def login_user(email, password):
 
 	hash_password = process_password(password)
 
-	if read_user(email).email != False:
+	if read_user(email).email != False and check_email(email):
 
 		if(read_user(email).password == hash_password):
 			return True
