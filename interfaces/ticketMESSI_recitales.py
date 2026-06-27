@@ -23,6 +23,7 @@ from rich.spinner import Spinner
 
 import models.database as database
 import models.sales_database as sales_database
+import models.stats_event as stats_event
 
 from models.date import from_unix
 
@@ -283,7 +284,7 @@ def agregar_evento() -> None:
         if not nombre: return
         lugar  = pedir_texto("  Lugar / Estadio", minlen=2)
         if not lugar: return
-        fecha  = pedir_texto("  Fecha (dd/mm/yyyy)", minlen=8)
+        fecha  = pedir_texto("  Fecha (DD/MM/YYYY hh:mm)", minlen=15)
         if not fecha: return
 
         separador(" SECTOR CAMPO ")

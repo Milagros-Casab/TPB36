@@ -1,6 +1,6 @@
 #=================================================#
 #                                                 #
-#     models.date — utilidades de fecha           #
+#     models.date - utilidades de fecha           #
 #                                                 #
 #=================================================#
 
@@ -22,4 +22,4 @@ def from_unix(timestamp):
 	try:
 		return datetime.fromtimestamp(int(timestamp)).strftime(FORMATO)
 	except (ValueError, TypeError, OSError):
-		return "—"
+		return False
