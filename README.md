@@ -22,7 +22,7 @@ También incorpora estadísticas de ventas y sectores más demandados.
 2. Instalar librerías necesarias:
 `pip install rich`
 3. Ejecutar el programa: 
-`python -m interfaces.ticketMESSI_recitales`
+`python main.py`
 
 ## Funcionalidades:
 - Registro e inicio de sesión
