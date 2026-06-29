@@ -23,3 +23,12 @@ def from_unix(timestamp):
 		return datetime.fromtimestamp(int(timestamp)).strftime(FORMATO)
 	except (ValueError, TypeError, OSError):
 		return False
+
+
+
+def valid_date(date):
+	try:
+		datetime.strptime(date, FORMATO)
+		return True
+	except ValueError:
+		return False

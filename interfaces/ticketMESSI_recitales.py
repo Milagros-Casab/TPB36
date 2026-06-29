@@ -25,6 +25,7 @@ import models.database as database
 import models.sales_database as sales_database
 import models.stats_event as stats_event
 from models.date import from_unix
+from models.date import valid_date
 
 console = Console()
 
@@ -52,8 +53,8 @@ def es_admin() -> bool:
 
 
     # Crear cuenta de administrador si no existe
-    if database.login_user(ADMIN_EMAIL, "admin1234")==False:
-        database.create_user(ADMIN_EMAIL, "admin1234")
+if database.login_user(ADMIN_EMAIL, "admin1234")==False:
+    database.create_user(ADMIN_EMAIL, "admin1234")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -308,7 +309,7 @@ def agregar_evento() -> None:
         lugar  = pedir_texto("  Lugar / Estadio", minlen=2)
         if not lugar: return
         fecha  = pedir_texto("  Fecha (DD/MM/YYYY hh:mm)", minlen=15)
-        if not fecha: return
+        if not fecha or not valid_date(fecha): return
 
         separador(" SECTOR CAMPO ")
         campo_price = pedir_entero("  Precio Campo ($)", minval=1)
