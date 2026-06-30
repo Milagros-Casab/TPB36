@@ -93,7 +93,7 @@ def read_user(email):
 		password=False
 
 	if check_email(email):
-		data = db.execute(f'SELECT * FROM ACCOUNTS WHERE EMAIL = "{email}";').fetchone()
+		data = db.execute('SELECT * FROM ACCOUNTS WHERE EMAIL = ?;', (email,)).fetchone()
 	else: return ret
 
 	if data is None:
@@ -118,7 +118,7 @@ def create_user(email, password):
 
 	if read_user(email).email==False and check_email(email):
 		try:
-			conn.execute(f'INSERT INTO ACCOUNTS VALUES("{email}", "{hash_password}");')
+			conn.execute('INSERT INTO ACCOUNTS VALUES(?, ?);', (email, hash_password))
 			conn.commit();
 
 		except sqlite3.Error:
@@ -135,7 +135,7 @@ def purge_user(email):
 
 	if read_user(email)!=False and check_email(email):
 		try:
-			conn.execute(f'DELETE FROM ACCOUNTS WHERE EMAIL="{email}"')
+			conn.execute('DELETE FROM ACCOUNTS WHERE EMAIL = ?;', (email,))
 			conn.commit();
 
 		except sqlite3.Error:
@@ -170,7 +170,7 @@ def login_user(email, password):
 def read_event(ev_name):
 
 
-	data = db.execute(f'SELECT * FROM EVENTS WHERE NAME="{ev_name}";').fetchone()
+	data = db.execute('SELECT * FROM EVENTS WHERE NAME = ?;', (ev_name,)).fetchone()
 
 	if data is None:
 		class ret:
@@ -202,7 +202,7 @@ def create_event(name, place, campo_price, campo_stock, platea_price, platea_sto
 
 	if read_event(name).name==False:
 		try:
-			conn.execute(f'INSERT INTO EVENTS VALUES("{name}", "{place}", {campo_price}, {campo_stock}, {platea_price}, {platea_stock}, {to_unix(date)});')
+			conn.execute('INSERT INTO EVENTS VALUES(?, ?, ?, ?, ?, ?, ?);', (name, place, campo_price, campo_stock, platea_price, platea_stock, to_unix(date)))
 			conn.commit()
 
 		except sqlite3.Error:
@@ -221,7 +221,7 @@ def purge_event(name):
 
 	if ev.name!=False:
 		try:
-			conn.execute(f'DELETE FROM EVENTS WHERE NAME="{name}"')
+			conn.execute('DELETE FROM EVENTS WHERE NAME = ?;', (name,))
 			conn.commit();
 
 		except sqlite3.Error:
@@ -239,7 +239,7 @@ def update_event(name, place, campo_price, campo_stock, platea_price, platea_sto
 		return False			# False si el evento no existe
 
 	try:
-		conn.execute(f'UPDATE EVENTS SET PLACE="{place}", CAMPO_PRICE={campo_price}, CAMPO_STOCK={campo_stock}, PLATEA_PRICE={platea_price}, PLATEA_STOCK={platea_stock}, DATE={to_unix(date)} WHERE NAME="{name}";')
+		conn.execute('UPDATE EVENTS SET PLACE = ?, CAMPO_PRICE = ?, CAMPO_STOCK = ?, PLATEA_PRICE = ?, PLATEA_STOCK = ?, DATE = ? WHERE NAME = ?;', (place, campo_price, campo_stock, platea_price, platea_stock, to_unix(date), name))
 		conn.commit()
 
 	except sqlite3.Error:
@@ -286,19 +286,19 @@ def list_event(part):
 
 def create_ticket(event, user, price, date, platea):
 
-	selected_event = db.execute(f'SELECT * FROM EVENTS WHERE NAME="{event}";').fetchone()
+	selected_event = db.execute('SELECT * FROM EVENTS WHERE NAME = ?;', (event,)).fetchone()
 	stock = 0
 
 
-	if(platea == 1): stock = db.execute(f'SELECT PLATEA_STOCK FROM EVENTS WHERE NAME="{event}";').fetchone()["PLATEA_STOCK"]
-	else: stock = db.execute(f'SELECT CAMPO_STOCK FROM EVENTS WHERE NAME="{event}";').fetchone()["CAMPO_STOCK"]
+	if(platea == 1): stock = db.execute('SELECT PLATEA_STOCK FROM EVENTS WHERE NAME = ?;', (event,)).fetchone()["PLATEA_STOCK"]
+	else: stock = db.execute('SELECT CAMPO_STOCK FROM EVENTS WHERE NAME = ?;', (event,)).fetchone()["CAMPO_STOCK"]
 
 	if stock == None: return False
 
 
 	if stock>0 :
 		try:
-			conn.execute(f'INSERT INTO TICKETS VALUES("{event}", "{user}", {price}, "{to_unix(date)}", {platea});')
+			conn.execute('INSERT INTO TICKETS VALUES(?, ?, ?, ?, ?);', (event, user, price, str(to_unix(date)), platea))
 			conn.commit()
 
 		except sqlite3.Error:
@@ -306,10 +306,10 @@ def create_ticket(event, user, price, date, platea):
 
 		else:
 			if(platea == 1):
-				conn.execute(f'UPDATE EVENTS SET PLATEA_STOCK=(PLATEA_STOCK-1) WHERE NAME="{event}";')
+				conn.execute('UPDATE EVENTS SET PLATEA_STOCK = (PLATEA_STOCK - 1) WHERE NAME = ?;', (event,))
 				conn.commit()
 			else:
-				conn.execute(f'UPDATE EVENTS SET CAMPO_STOCK=(CAMPO_STOCK-1) WHERE NAME="{event}";')
+				conn.execute('UPDATE EVENTS SET CAMPO_STOCK = (CAMPO_STOCK - 1) WHERE NAME = ?;', (event,))
 				conn.commit()
 			return True
 
@@ -320,7 +320,7 @@ def create_ticket(event, user, price, date, platea):
 
 def list_ticket(user):
 	print(user)
-	data = db.execute(f'SELECT * FROM TICKETS WHERE USER="{user}";').fetchall()
+	data = db.execute('SELECT * FROM TICKETS WHERE USER = ?;', (user,)).fetchall()
 
 	class ret:
 		event =  []
