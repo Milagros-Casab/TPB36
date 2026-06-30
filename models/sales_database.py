@@ -35,7 +35,7 @@ def create_sale(code, sale_type, value, event):
 
 	if read_event(event).name!=False:
 		try:
-			conn.execute(f'INSERT INTO SALES VALUES("{code}", {sale_type}, {value}, "{event}");')
+			conn.execute('INSERT INTO SALES VALUES (?, ?, ?, ?);', (code, sale_type, value, event))
 			conn.commit()
 
 		except sqlite3.Error:
@@ -51,7 +51,7 @@ def create_sale(code, sale_type, value, event):
 def read_sale(code, event):
 	code=code.upper()
 
-	data = db.execute(f'SELECT * FROM SALES WHERE CODE="{code}" AND EVENT="{event}";').fetchone()
+	data = db.execute('SELECT * FROM SALES WHERE CODE = ? AND EVENT = ?;', (code, event)).fetchone()
 
 	if data is None:
 		class ret:
@@ -75,7 +75,7 @@ def read_sale(code, event):
 
 def sales(event):
 
-	return db.execute(f'SELECT COUNT(*) FROM SALES WHERE EVENT="{event}";').fetchone()[0]
+	return db.execute('SELECT COUNT(*) FROM SALES WHERE EVENT = ?;', (event,)).fetchone()[0]
 	# if it returns "0" then there's no promo codes for it
 
 #

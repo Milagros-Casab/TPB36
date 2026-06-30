@@ -22,7 +22,7 @@ db = conn.cursor()
 
 def estadisticas_evento(event):
 
-	data = db.execute(f'SELECT * FROM TICKETS WHERE EVENT="{event}";').fetchall()
+	data = db.execute('SELECT * FROM TICKETS WHERE EVENT = ?;', (event,)).fetchall()
 
 	class ret:
 		total_vendidas = 0
